@@ -6,7 +6,6 @@
 - 테스트 결과 (Windows 11 · Node.js v24.22.3 · npm 11.19.1)
   - `npm test` 4/4 통과 · `npm run test:assignment` 32/32 통과 · `npm run test:advanced` 1/1 통과(선택 심화)
   - 출력 원본: `docs/evidence/test-starter.txt`, `test-assignment.txt`, `test-advanced.txt`
-- 화면 검증: U01~U05, T01~T32 화면 캡처는 보고서 부록 A에 있습니다.
 
 ### 변경 파일
 

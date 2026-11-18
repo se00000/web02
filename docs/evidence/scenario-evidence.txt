@@ -1,0 +1,484 @@
+
+==================== E1 거부 사례: bob이 alice의 대기 신청을 취소 ====================
+> alice  POST /api/events/1/applications {}
+< 201 {"id":1,"eventId":1,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.569Z","updatedAt":"2026-11-14T13:06:51.569Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+[요청 전] applications
+[
+ {
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "status": "PENDING",
+  "created_at": "2026-11-14T13:06:51.569Z"
+ }
+]
+[요청 전] history
+[
+ {
+  "id": 1,
+  "application_id": 1,
+  "actor_id": 1,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ }
+]
+> bob  POST /api/applications/1/cancel {}
+< 403 {"code":"FORBIDDEN","message":"이 작업을 수행할 권한이 없습니다."}
+[요청 후] applications
+[
+ {
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "status": "PENDING",
+  "created_at": "2026-11-14T13:06:51.569Z"
+ }
+]
+[요청 후] history
+[
+ {
+  "id": 1,
+  "application_id": 1,
+  "actor_id": 1,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ }
+]
+
+==================== E2 최신 상태: 학생이 취소한 뒤 운영자가 오래된 화면에서 승인 ====================
+> alice  POST /api/events/1/applications {}
+< 201 {"id":1,"eventId":1,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.580Z","updatedAt":"2026-11-14T13:06:51.580Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> alice  POST /api/applications/1/cancel {}
+< 200 {"id":1,"eventId":1,"userId":1,"status":"CANCELLED","createdAt":"2026-11-14T13:06:51.580Z","updatedAt":"2026-11-14T13:06:51.585Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> manager1  POST /api/applications/1/approve {}
+< 409 {"code":"INVALID_STATE","message":"현재 상태에서는 이 작업을 수행할 수 없습니다."}
+[결과] applications
+[
+ {
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "status": "CANCELLED",
+  "created_at": "2026-11-14T13:06:51.580Z"
+ }
+]
+행사1 승인 인원 = 0
+
+==================== E3 정원: 행사1(정원 2)에서 세 번째 승인 ====================
+> alice  POST /api/events/1/applications {}
+< 201 {"id":1,"eventId":1,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.596Z","updatedAt":"2026-11-14T13:06:51.596Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> bob  POST /api/events/1/applications {}
+< 201 {"id":2,"eventId":1,"userId":2,"status":"PENDING","createdAt":"2026-11-14T13:06:51.602Z","updatedAt":"2026-11-14T13:06:51.602Z","applicantName":"준호","eventTitle":"함께 만드는 웹 서비스"}
+> charlie  POST /api/events/1/applications {}
+< 201 {"id":3,"eventId":1,"userId":5,"status":"PENDING","createdAt":"2026-11-14T13:06:51.607Z","updatedAt":"2026-11-14T13:06:51.607Z","applicantName":"서연","eventTitle":"함께 만드는 웹 서비스"}
+> manager1  POST /api/applications/1/approve {}
+< 200 {"id":1,"eventId":1,"userId":1,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.596Z","updatedAt":"2026-11-14T13:06:51.610Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> manager1  POST /api/applications/2/approve {}
+< 200 {"id":2,"eventId":1,"userId":2,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.602Z","updatedAt":"2026-11-14T13:06:51.614Z","applicantName":"준호","eventTitle":"함께 만드는 웹 서비스"}
+[요청 전] 행사1 승인 인원 = 2
+> manager1  POST /api/applications/3/approve {}
+< 409 {"code":"CAPACITY_FULL","message":"정원이 찼습니다."}
+[요청 후] 행사1 승인 인원 = 2
+[요청 후] applications
+[
+ {
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "status": "APPROVED",
+  "created_at": "2026-11-14T13:06:51.596Z"
+ },
+ {
+  "id": 2,
+  "event_id": 1,
+  "user_id": 2,
+  "status": "APPROVED",
+  "created_at": "2026-11-14T13:06:51.602Z"
+ },
+ {
+  "id": 3,
+  "event_id": 1,
+  "user_id": 5,
+  "status": "PENDING",
+  "created_at": "2026-11-14T13:06:51.607Z"
+ }
+]
+
+==================== E4 대기 순서(시각 다름): bob 11-02, charlie 11-01 → charlie 승급 ====================
+> alice  POST /api/events/2/applications {}
+< 201 {"id":1,"eventId":2,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.625Z","updatedAt":"2026-11-14T13:06:51.625Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"}
+> manager2  POST /api/applications/1/approve {}
+< 200 {"id":1,"eventId":2,"userId":1,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.625Z","updatedAt":"2026-11-14T13:06:51.629Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"}
+> bob  POST /api/events/2/applications {}
+< 201 {"id":2,"eventId":2,"userId":2,"status":"PENDING","createdAt":"2026-11-14T13:06:51.632Z","updatedAt":"2026-11-14T13:06:51.632Z","applicantName":"준호","eventTitle":"서비스 설계 스터디"}
+> charlie  POST /api/events/2/applications {}
+< 201 {"id":3,"eventId":2,"userId":5,"status":"PENDING","createdAt":"2026-11-14T13:06:51.636Z","updatedAt":"2026-11-14T13:06:51.636Z","applicantName":"서연","eventTitle":"서비스 설계 스터디"}
+[요청 전] applications
+[
+ {
+  "id": 1,
+  "event_id": 2,
+  "user_id": 1,
+  "status": "APPROVED",
+  "created_at": "2026-11-14T13:06:51.625Z"
+ },
+ {
+  "id": 2,
+  "event_id": 2,
+  "user_id": 2,
+  "status": "PENDING",
+  "created_at": "2026-11-02T00:00:00.000Z"
+ },
+ {
+  "id": 3,
+  "event_id": 2,
+  "user_id": 5,
+  "status": "PENDING",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ }
+]
+선택 SQL: SELECT id FROM applications WHERE event_id = ? AND status = 'PENDING' ORDER BY created_at ASC, id ASC LIMIT 1  → {"id":3}
+> manager2  POST /api/applications/1/revoke {"reason":"운영 사정으로 승인 취소"}
+< 200 {"revoked":{"id":1,"eventId":2,"userId":1,"status":"REVOKED","createdAt":"2026-11-14T13:06:51.625Z","updatedAt":"2026-11-14T13:06:51.642Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"},"promoted":{"id":3,"eventId":2,"userId":5,"status":"APPROVED","createdAt":"2026-11-01T00:00:00.000Z","updatedAt":"2026-11-14T13:06:51.643Z","applicantName":"서연","eventTitle":"서비스 설계 스터디"}}
+[요청 후] applications
+[
+ {
+  "id": 1,
+  "event_id": 2,
+  "user_id": 1,
+  "status": "REVOKED",
+  "created_at": "2026-11-14T13:06:51.625Z"
+ },
+ {
+  "id": 2,
+  "event_id": 2,
+  "user_id": 2,
+  "status": "PENDING",
+  "created_at": "2026-11-02T00:00:00.000Z"
+ },
+ {
+  "id": 3,
+  "event_id": 2,
+  "user_id": 5,
+  "status": "APPROVED",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ }
+]
+
+==================== E5 대기 순서(시각 같음): 같은 created_at → 작은 id(bob) 승급 ====================
+> alice  POST /api/events/2/applications {}
+< 201 {"id":1,"eventId":2,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.650Z","updatedAt":"2026-11-14T13:06:51.650Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"}
+> manager2  POST /api/applications/1/approve {}
+< 200 {"id":1,"eventId":2,"userId":1,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.650Z","updatedAt":"2026-11-14T13:06:51.653Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"}
+> bob  POST /api/events/2/applications {}
+< 201 {"id":2,"eventId":2,"userId":2,"status":"PENDING","createdAt":"2026-11-14T13:06:51.656Z","updatedAt":"2026-11-14T13:06:51.656Z","applicantName":"준호","eventTitle":"서비스 설계 스터디"}
+> charlie  POST /api/events/2/applications {}
+< 201 {"id":3,"eventId":2,"userId":5,"status":"PENDING","createdAt":"2026-11-14T13:06:51.659Z","updatedAt":"2026-11-14T13:06:51.659Z","applicantName":"서연","eventTitle":"서비스 설계 스터디"}
+[요청 전] applications
+[
+ {
+  "id": 1,
+  "event_id": 2,
+  "user_id": 1,
+  "status": "APPROVED",
+  "created_at": "2026-11-14T13:06:51.650Z"
+ },
+ {
+  "id": 2,
+  "event_id": 2,
+  "user_id": 2,
+  "status": "PENDING",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ },
+ {
+  "id": 3,
+  "event_id": 2,
+  "user_id": 5,
+  "status": "PENDING",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ }
+]
+선택 SQL 결과 → {"id":2}
+> manager2  POST /api/applications/1/revoke {"reason":"운영 사정으로 승인 취소"}
+< 200 {"revoked":{"id":1,"eventId":2,"userId":1,"status":"REVOKED","createdAt":"2026-11-14T13:06:51.650Z","updatedAt":"2026-11-14T13:06:51.664Z","applicantName":"민지","eventTitle":"서비스 설계 스터디"},"promoted":{"id":2,"eventId":2,"userId":2,"status":"APPROVED","createdAt":"2026-11-01T00:00:00.000Z","updatedAt":"2026-11-14T13:06:51.664Z","applicantName":"준호","eventTitle":"서비스 설계 스터디"}}
+[요청 후] applications
+[
+ {
+  "id": 1,
+  "event_id": 2,
+  "user_id": 1,
+  "status": "REVOKED",
+  "created_at": "2026-11-14T13:06:51.650Z"
+ },
+ {
+  "id": 2,
+  "event_id": 2,
+  "user_id": 2,
+  "status": "APPROVED",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ },
+ {
+  "id": 3,
+  "event_id": 2,
+  "user_id": 5,
+  "status": "PENDING",
+  "created_at": "2026-11-01T00:00:00.000Z"
+ }
+]
+[요청 후] history
+[
+ {
+  "id": 1,
+  "application_id": 1,
+  "actor_id": 1,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 2,
+  "application_id": 1,
+  "actor_id": 4,
+  "action": "APPROVE",
+  "from_status": "PENDING",
+  "to_status": "APPROVED",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 3,
+  "application_id": 2,
+  "actor_id": 2,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 4,
+  "application_id": 3,
+  "actor_id": 5,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 5,
+  "application_id": 1,
+  "actor_id": 4,
+  "action": "REVOKE",
+  "from_status": "APPROVED",
+  "to_status": "REVOKED",
+  "reason": "운영 사정으로 승인 취소",
+  "cause_history_id": null
+ },
+ {
+  "id": 6,
+  "application_id": 2,
+  "actor_id": 4,
+  "action": "AUTO_APPROVE",
+  "from_status": "PENDING",
+  "to_status": "APPROVED",
+  "reason": null,
+  "cause_history_id": 5
+ }
+]
+
+==================== E6 롤백: AUTO_APPROVE 이력 INSERT 실패 주입 후 승인 취소 ====================
+> alice  POST /api/events/1/applications {}
+< 201 {"id":1,"eventId":1,"userId":1,"status":"PENDING","createdAt":"2026-11-14T13:06:51.668Z","updatedAt":"2026-11-14T13:06:51.668Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> manager1  POST /api/applications/1/approve {}
+< 200 {"id":1,"eventId":1,"userId":1,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.668Z","updatedAt":"2026-11-14T13:06:51.672Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"}
+> bob  POST /api/events/1/applications {}
+< 201 {"id":2,"eventId":1,"userId":2,"status":"PENDING","createdAt":"2026-11-14T13:06:51.678Z","updatedAt":"2026-11-14T13:06:51.678Z","applicantName":"준호","eventTitle":"함께 만드는 웹 서비스"}
+[요청 전]
+{
+ "applications": [
+  {
+   "id": 1,
+   "event_id": 1,
+   "user_id": 1,
+   "status": "APPROVED",
+   "created_at": "2026-11-14T13:06:51.668Z"
+  },
+  {
+   "id": 2,
+   "event_id": 1,
+   "user_id": 2,
+   "status": "PENDING",
+   "created_at": "2026-11-14T13:06:51.678Z"
+  }
+ ],
+ "history": [
+  {
+   "id": 1,
+   "application_id": 1,
+   "actor_id": 1,
+   "action": "APPLY",
+   "from_status": null,
+   "to_status": "PENDING",
+   "reason": null,
+   "cause_history_id": null
+  },
+  {
+   "id": 2,
+   "application_id": 1,
+   "actor_id": 3,
+   "action": "APPROVE",
+   "from_status": "PENDING",
+   "to_status": "APPROVED",
+   "reason": null,
+   "cause_history_id": null
+  },
+  {
+   "id": 3,
+   "application_id": 2,
+   "actor_id": 2,
+   "action": "APPLY",
+   "from_status": null,
+   "to_status": "PENDING",
+   "reason": null,
+   "cause_history_id": null
+  }
+ ]
+}
+트리거 설치: fail_auto (AUTO_APPROVE INSERT 시 ABORT)
+TEST_INJECTED_FAILURE
+> manager1  POST /api/applications/1/revoke {"reason":"운영 사정으로 승인 취소"}
+< 500 {"code":"INTERNAL_ERROR","message":"서버에서 처리하지 못했습니다."}
+[요청 후]
+{
+ "applications": [
+  {
+   "id": 1,
+   "event_id": 1,
+   "user_id": 1,
+   "status": "APPROVED",
+   "created_at": "2026-11-14T13:06:51.668Z"
+  },
+  {
+   "id": 2,
+   "event_id": 1,
+   "user_id": 2,
+   "status": "PENDING",
+   "created_at": "2026-11-14T13:06:51.678Z"
+  }
+ ],
+ "history": [
+  {
+   "id": 1,
+   "application_id": 1,
+   "actor_id": 1,
+   "action": "APPLY",
+   "from_status": null,
+   "to_status": "PENDING",
+   "reason": null,
+   "cause_history_id": null
+  },
+  {
+   "id": 2,
+   "application_id": 1,
+   "actor_id": 3,
+   "action": "APPROVE",
+   "from_status": "PENDING",
+   "to_status": "APPROVED",
+   "reason": null,
+   "cause_history_id": null
+  },
+  {
+   "id": 3,
+   "application_id": 2,
+   "actor_id": 2,
+   "action": "APPLY",
+   "from_status": null,
+   "to_status": "PENDING",
+   "reason": null,
+   "cause_history_id": null
+  }
+ ]
+}
+요청 전과 동일? true
+트리거 제거 후 재시도
+> manager1  POST /api/applications/1/revoke {"reason":"운영 사정으로 승인 취소"}
+< 200 {"revoked":{"id":1,"eventId":1,"userId":1,"status":"REVOKED","createdAt":"2026-11-14T13:06:51.668Z","updatedAt":"2026-11-14T13:06:51.692Z","applicantName":"민지","eventTitle":"함께 만드는 웹 서비스"},"promoted":{"id":2,"eventId":1,"userId":2,"status":"APPROVED","createdAt":"2026-11-14T13:06:51.678Z","updatedAt":"2026-11-14T13:06:51.692Z","applicantName":"준호","eventTitle":"함께 만드는 웹 서비스"}}
+[재시도 후] applications
+[
+ {
+  "id": 1,
+  "event_id": 1,
+  "user_id": 1,
+  "status": "REVOKED",
+  "created_at": "2026-11-14T13:06:51.668Z"
+ },
+ {
+  "id": 2,
+  "event_id": 1,
+  "user_id": 2,
+  "status": "APPROVED",
+  "created_at": "2026-11-14T13:06:51.678Z"
+ }
+]
+[재시도 후] history
+[
+ {
+  "id": 1,
+  "application_id": 1,
+  "actor_id": 1,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 2,
+  "application_id": 1,
+  "actor_id": 3,
+  "action": "APPROVE",
+  "from_status": "PENDING",
+  "to_status": "APPROVED",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 3,
+  "application_id": 2,
+  "actor_id": 2,
+  "action": "APPLY",
+  "from_status": null,
+  "to_status": "PENDING",
+  "reason": null,
+  "cause_history_id": null
+ },
+ {
+  "id": 4,
+  "application_id": 1,
+  "actor_id": 3,
+  "action": "REVOKE",
+  "from_status": "APPROVED",
+  "to_status": "REVOKED",
+  "reason": "운영 사정으로 승인 취소",
+  "cause_history_id": null
+ },
+ {
+  "id": 5,
+  "application_id": 2,
+  "actor_id": 3,
+  "action": "AUTO_APPROVE",
+  "from_status": "PENDING",
+  "to_status": "APPROVED",
+  "reason": null,
+  "cause_history_id": 4
+ }
+]

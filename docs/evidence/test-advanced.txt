@@ -1,0 +1,13 @@
+
+> business-rules-assignment-2@2.0.0 test:advanced
+> node --test tests/concurrency.test.js
+
+✔ 선택 심화: 서버 두 개가 마지막 한 자리를 동시에 승인 (1051.4946ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1170.3352

@@ -1,0 +1,67 @@
+sequenceDiagram
+    autonumber
+    participant UI as 화면<br/>public/app.js
+    participant API as API·인증<br/>src/app.js · auth.js
+    participant SVC as 서비스<br/>application-service.js
+    participant DB as SQLite<br/>applications · history
+
+    UI->>API: POST /api/applications/:id/revoke<br/>{reason}
+    API->>API: auth.middleware: JWT 검증<br/>ID·reason 형식 검사 (trim 5~200자)
+
+    alt 인증·입력 검증 실패
+        API-->>UI: 401 인증 오류 또는 400 BAD_INPUT
+    else 검증 성공
+        API->>SVC: service.revoke(actor, id, reason)
+
+        rect rgb(225, 236, 252)
+            Note over SVC,DB: ▼ 트랜잭션 시작 — inTransaction() 진입
+            SVC->>DB: BEGIN IMMEDIATE (쓰기 잠금 획득)
+            SVC->>DB: repo.application(id) + repo.event(eventId)
+            DB-->>SVC: 최신 신청·행사 정보
+            SVC->>SVC: 존재(404) → 담당자(403)<br/>→ 신청 상태 APPROVED(409) 검사
+
+            alt 검사 실패
+                SVC->>SVC: throw AppError
+                SVC->>DB: ROLLBACK → 저장된 것 없음
+            else 검사 통과
+                rect rgb(253, 232, 232)
+                    Note over SVC,DB: [1] 승인 취소 + 이력 저장
+                    SVC->>DB: UPDATE applications SET status='REVOKED'
+                    SVC->>DB: INSERT history (REVOKE, reason)
+                    DB-->>SVC: revokeHistoryId
+                end
+
+                rect rgb(243, 236, 252)
+                    Note over SVC,DB: [2] 대기자 선택 (같은 행사 · PENDING · 가장 이른 1명)
+                    SVC->>DB: SELECT id FROM applications<br/>WHERE event_id=? AND status='PENDING'<br/>ORDER BY created_at ASC, id ASC LIMIT 1
+                    DB-->>SVC: next 또는 없음
+                end
+
+                opt next 있음
+                    rect rgb(228, 246, 233)
+                        Note over SVC,DB: [3] 자동 승급 + 이력 저장
+                        SVC->>DB: UPDATE applications SET status='APPROVED'<br/>WHERE id=next.id
+                        SVC->>DB: INSERT history (AUTO_APPROVE,<br/>cause_history_id=revokeHistoryId)
+                    end
+                end
+
+                rect rgb(255, 245, 214)
+                    Note over SVC,DB: [4] 종료 분기
+                    alt COMMIT 분기 — 모든 저장 성공
+                        SVC->>DB: COMMIT → 신청 2건 + 이력 2건 확정
+                    else ROLLBACK 분기 — [1]~[3] 중 하나라도 실패 (throw)
+                        SVC->>DB: ROLLBACK → 요청 전 상태로 복원
+                    end
+                end
+            end
+            Note over SVC,DB: ▲ 트랜잭션 끝 — COMMIT 또는 ROLLBACK 후 inTransaction() 종료
+        end
+
+        alt 성공
+            SVC-->>API: { revoked, promoted }
+            API-->>UI: 200 { revoked, promoted }
+        else 거부 또는 저장 오류
+            SVC-->>API: AppError / 저장 오류 다시 던짐
+            API-->>UI: 4xx {code} 또는 500 INTERNAL_ERROR
+        end
+    end

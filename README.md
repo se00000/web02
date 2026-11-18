@@ -1,10 +1,5 @@
-# 과제 2 신청 승인 서비스 시작 코드
 
-신청·대기 취소·직접 승인·승인 취소·대기열 자동 승급·변경 이력을 구현합니다. 상위 폴더의 [안내문](../01_과제2_안내문.pdf)과 [API 계약](docs/API.md)을 먼저 읽으세요.
-
-**제출 마감: 2026년 11월 25일 23:59 (한국 시간)**
-
-## 제출 정보 (학생 작성)
+## 제출 정보
 
 - 저장소: https://github.com/se00000/web02 · 보고서: [docs/report.pdf](docs/report.pdf)
 - 구현 완료: TODO 4개(`apply`·`cancel`·`approve`·`revoke`)와 트랜잭션 함수 `inTransaction` 구현 완료
